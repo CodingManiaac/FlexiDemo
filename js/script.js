@@ -1,39 +1,70 @@
-// Mobile Menu Toggle
-function toggleMenu() {
+// Master Event Listener for ALL navigation clicks
+document.addEventListener('click', function(event) {
     const nav = document.getElementById('navLinks');
-    nav.classList.toggle('active');
-    
-    if(!nav.classList.contains('active')) {
-        document.querySelectorAll('.dropdown-parent.active').forEach(item => {
-            item.classList.remove('active');
+    if (!nav) return;
+
+    // 1. Hamburger Menu Tap
+    if (event.target.closest('.mobile-menu-btn')) {
+        event.preventDefault();
+        nav.classList.add('active');
+    }
+
+    // 2. Close Button Tap
+    if (event.target.closest('.mobile-close')) {
+        event.preventDefault();
+        nav.classList.remove('active');
+        
+        // Reset dropdowns when closing menu
+        document.querySelectorAll('.dropdown-parent.active, .dropdown-menu.show').forEach(item => {
+            item.classList.remove('active', 'show');
+            if (item.style) item.style.display = '';
         });
     }
-}
 
-// Improved Mobile Dropdown Logic
-document.addEventListener('DOMContentLoaded', function() {
-    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
-
-    dropdownToggles.forEach(toggle => {
-        toggle.addEventListener('click', function(event) {
-            if (window.innerWidth <= 768) {
-                event.preventDefault(); 
-                const parent = this.parentElement;
-                const wasActive = parent.classList.contains('active');
-                parent.classList.toggle('active', !wasActive);
-                
-                const menu = parent.querySelector('.dropdown-menu');
-                if (!wasActive) {
-                    menu.style.display = 'flex';
-                } else {
-                    menu.style.display = 'none';
-                }
+    // 3. Services Dropdown Tap (Only triggers on mobile/tablet widths)
+    const dropdownToggle = event.target.closest('.dropdown-toggle');
+    if (dropdownToggle && window.innerWidth <= 1024) {
+        event.preventDefault();
+        
+        const parent = dropdownToggle.parentElement;
+        const menu = parent.querySelector('.dropdown-menu');
+        
+        if (menu) {
+            const isShowing = menu.classList.contains('show');
+            
+            if (!isShowing) {
+                parent.classList.add('active');
+                menu.classList.add('show');
+                menu.style.display = 'flex';
+            } else {
+                parent.classList.remove('active');
+                menu.classList.remove('show');
+                menu.style.display = 'none';
             }
-        });
-    });
+        }
+    }
+});
 
-    // Initialize Review Dates
-    updateReviewDates();
+// Window Resize Safety
+window.addEventListener('resize', function() {
+    if (window.innerWidth > 1024) {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.style.display = ''; 
+            menu.classList.remove('show');
+        });
+        document.querySelectorAll('.dropdown-parent').forEach(p => p.classList.remove('active'));
+        const nav = document.getElementById('navLinks');
+        if(nav) nav.classList.remove('active');
+    }
+});
+
+// Initialize Review Dates
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        updateReviewDates();
+    } catch(e) {
+        console.warn("Reviews bypassed.");
+    }
 });
 
 // Contact Form Submission
@@ -61,9 +92,11 @@ function handleFormSubmit(event) {
     }
 }
 
-// --- NEW FUNCTION: Update Review Times ---
+// Update Review Times
 function updateReviewDates() {
     const timeElements = document.querySelectorAll('.review-time');
+    if (timeElements.length === 0) return; 
+
     const now = new Date();
     
     timeElements.forEach(element => {
@@ -71,9 +104,9 @@ function updateReviewDates() {
         if(!dateAttr) return;
 
         const reviewDate = new Date(dateAttr);
-        // Calculate difference in milliseconds
+        if(isNaN(reviewDate)) return; 
+
         const diffTime = now - reviewDate;
-        // Convert to days
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         
         let timeString = "";
@@ -88,7 +121,6 @@ function updateReviewDates() {
             timeString = years + (years === 1 ? " year ago" : " years ago");
         }
         
-        // Only update if the calculation is valid (non-negative)
         if(diffDays >= 0) {
             element.textContent = timeString;
         }
